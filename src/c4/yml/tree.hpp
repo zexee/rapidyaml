@@ -421,6 +421,9 @@ struct NodeData
     size_t     m_last_child;
     size_t     m_next_sibling;
     size_t     m_prev_sibling;
+
+    size_t     m_leading_comment;
+    size_t     m_trailing_comment;
 };
 C4_MUST_BE_TRIVIAL_COPY(NodeData);
 
@@ -675,6 +678,9 @@ public:
     size_t last_sibling(size_t node) const { return is_root(node) ? node : _p(_p(node)->m_parent)->m_last_child; }
     size_t sibling(size_t node, size_t pos) const { return child(_p(node)->m_parent, pos); }
     size_t find_sibling(size_t node, csubstr const& key) const { return find_child(_p(node)->m_parent, key); }
+
+    bool   is_first_child(size_t node) const { return is_root(node) || _p(parent(node))->m_first_child == node; }
+    bool   is_last_child(size_t node) const { return is_root(node) || _p(parent(node))->m_last_child == node; }
 
     size_t doc(size_t i) const { size_t rid = root_id(); RYML_ASSERT(is_stream(rid)); return child(rid, i); } //!< gets the @p i document node index. requires that the root node is a stream.
 

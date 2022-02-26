@@ -369,6 +369,10 @@ private:
     template<size_t N>
     void _skipchars(const char (&chars)[N]);
 
+    NodeData* _append_cmtl(csubstr val);
+    NodeData* _append_cmtt(csubstr val);
+    csubstr _filter_cmt(substr cmt);
+
 private:
 
     static size_t _count_nlines(csubstr src);

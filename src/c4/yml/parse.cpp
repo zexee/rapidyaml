@@ -3756,6 +3756,7 @@ bool Parser::_handle_indentation()
 //-----------------------------------------------------------------------------
 csubstr Parser::_scan_comment()
 {
+    // TODO make this multiline
     csubstr s = m_state->line_contents.rem;
     _RYML_CB_ASSERT(m_stack.m_callbacks, s.begins_with('#'));
     _line_progressed(s.len);
