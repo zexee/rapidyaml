@@ -895,11 +895,12 @@ public:
 
 public:
 
-    /** recursively duplicate a node from this tree into a new parent,
-     * placing it after one of its children
+    /** recursively duplicate a @p node into a @p new_parent,
+     * placing it @p after one of its children
      * @return the index of the copy */
     size_t duplicate(size_t node, size_t new_parent, size_t after);
-    /** recursively duplicate a node from a different tree into a new parent,
+    /** recursively duplicate a @p node from a different @p src tree
+     * into a new parent in this tree,
      * placing it after one of its children
      * @return the index of the copy */
     size_t duplicate(Tree const* src, size_t node, size_t new_parent, size_t after);

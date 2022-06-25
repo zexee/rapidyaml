@@ -1136,7 +1136,7 @@ size_t Tree::duplicate_children_no_rep(Tree const *src, size_t node, size_t pare
     _RYML_CB_ASSERT(m_callbacks, parent != NONE);
     _RYML_CB_ASSERT(m_callbacks, after == NONE || has_child(parent, after));
 
-    // don't loop using pointers as there may be a relocation
+    // never loop using pointers as there may be a relocation
 
     // find the position where "after" is
     size_t after_pos = NONE;
@@ -1481,7 +1481,7 @@ void Tree::resolve()
                 _RYML_CB_ASSERT(m_callbacks, is_keyval(rd.node));
                 size_t p = parent(rd.node);
                 size_t after = prev_sibling(rd.node);
-                duplicate_children_no_rep(rd.target, p, after);
+                duplicate_children_no_rep(this, rd.target, p, after);
                 remove(rd.node);
             }
             else if(rd.type.is_key_ref())

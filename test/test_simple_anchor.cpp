@@ -438,11 +438,47 @@ foo:
 }
 
 
+TEST(anchors, inheritance)
+{
+    Tree t = parse_in_arena(R"(A: &A
+    V: 3
+    L: 1
+B:
+    <<: *A
+    V: 4
+    L: 5
+)");
+    //EXPECT_TRUE(t.rootref().is_map());
+    //EXPECT_TRUE(t["A"].is_map());
+    //EXPECT_TRUE(t["A"]["V"].is_keyval());
+    //EXPECT_TRUE(t["A"]["L"].has_key());
+    ////EXPECT_TRUE(t["A"]["L"].is_seq());
+    //EXPECT_TRUE(t["B"].is_map());
+    //EXPECT_TRUE(t["B"]["<<"].is_keyval());
+    //EXPECT_TRUE(t["B"]["V"].is_keyval());
+    //EXPECT_TRUE(t["B"]["L"].is_seq());
+    //EXPECT_EQ(t["B"]["V"].val(), "4");
+    //EXPECT_EQ(t["A"]["L"][0].val(), "1");
+    //EXPECT_EQ(t["B"]["L"][0].val(), "5");
+    t.resolve();
+    //EXPECT_TRUE(t.rootref().is_map());
+    //EXPECT_TRUE(t["A"].is_map());
+    //EXPECT_TRUE(t["A"]["V"].is_keyval());
+    //EXPECT_TRUE(t["A"]["L"].is_keyval());
+    //EXPECT_TRUE(t["B"].is_map());
+    //EXPECT_TRUE(t["B"]["V"].is_keyval());
+    //EXPECT_TRUE(t["B"]["L"].is_keyval());
+    //EXPECT_EQ(t["A"]["V"].val(), "3");
+    //EXPECT_EQ(t["B"]["V"].val(), "3");
+    //EXPECT_EQ(t["A"]["L"][0].val(), "1");
+    //EXPECT_EQ(t["B"]["L"][0].val(), "1");
+}
+
+
 //-----------------------------------------------------------------------------
 //-----------------------------------------------------------------------------
 //-----------------------------------------------------------------------------
 
-//     SIMPLE_ANCHOR/YmlTestCase.parse_using_ryml/0
 
 C4_SUPPRESS_WARNING_GCC_WITH_PUSH("-Wuseless-cast")
 
@@ -657,12 +693,12 @@ R"(# https://yaml.org/type/merge.html
   x: 1
   y: 2
   r: 10
-  label: center/big
+  label: none
 
 - # Merge one map
   << : *CENTER
   r: 10
-  label: center/big
+  label: center
 
 - # Merge multiple maps
   << : [ *CENTER, *BIG ]
@@ -671,17 +707,17 @@ R"(# https://yaml.org/type/merge.html
 - # Override
   << : [ *BIG, *LEFT, *SMALL ]
   x: 1
-  label: center/big
+  label: center/left/small
 )",
 L{
     N(L{N("x", "1" ), N("y", "2")}, AR(VALANCH, "CENTER")),
     N(L{N("x", "0" ), N("y", "2")}, AR(VALANCH, "LEFT"  )),
     N(L{N("r", "10")             }, AR(VALANCH, "BIG"   )),
     N(L{N("r", "1" )             }, AR(VALANCH, "SMALL" )),
-    N(L{N("x", "1" ), N("y", "2"), N("r", "10"), N("label", "center/big")}),
-    N(L{N("<<", AR(KEYREF, "<<"), "*CENTER", AR(VALREF, "*CENTER")), N("r", "10"), N("label", "center/big")}),
+    N(L{N("x", "1" ), N("y", "2"), N("r", "10"), N("label", "none")}),
+    N(L{N("<<", AR(KEYREF, "<<"), "*CENTER", AR(VALREF, "*CENTER")), N("r", "10"), N("label", "center")}),
     N(L{N("<<", AR(KEYREF, "<<"), L{N("*CENTER", AR(VALREF, "*CENTER")), N("*BIG", AR(VALREF, "*BIG"))}), N("label", "center/big")}),
-    N(L{N("<<", AR(KEYREF, "<<"), L{N("*BIG", AR(VALREF, "*BIG")), N("*LEFT", AR(VALREF, "*LEFT")), N("*SMALL", AR(VALREF, "*SMALL"))}), N("x", "1"), N("label", "center/big")}),
+    N(L{N("<<", AR(KEYREF, "<<"), L{N("*BIG", AR(VALREF, "*BIG")), N("*LEFT", AR(VALREF, "*LEFT")), N("*SMALL", AR(VALREF, "*SMALL"))}), N("x", "1"), N("label", "center/left/small")}),
 });
 
 ADD_CASE_TO_GROUP("merge example, resolved", RESOLVE_REFS,
@@ -697,12 +733,12 @@ R"(# https://yaml.org/type/merge.html
   x: 1
   y: 2
   r: 10
-  label: center/big
+  label: none
 
 - # Merge one map
   << : *CENTER
   r: 10
-  label: center/big
+  label: center
 
 - # Merge multiple maps
   << : [ *CENTER, *BIG ]
@@ -711,17 +747,77 @@ R"(# https://yaml.org/type/merge.html
 - # Override
   << : [ *SMALL, *LEFT, *BIG ]
   x: 1
-  label: center/big
+  label: small/left/big
 )",
 L{
     N(L{N("x", "1" ), N("y", "2")}),
     N(L{N("x", "0" ), N("y", "2")}),
     N(L{N("r", "10")             }),
     N(L{N("r", "1" )             }),
+    N(L{N("x", "1" ), N("y", "2"), N("r", "10"), N("label", "none")}),
+    N(L{N("x", "1" ), N("y", "2"), N("r", "10"), N("label", "center")}),
     N(L{N("x", "1" ), N("y", "2"), N("r", "10"), N("label", "center/big")}),
-    N(L{N("x", "1" ), N("y", "2"), N("r", "10"), N("label", "center/big")}),
-    N(L{N("x", "1" ), N("y", "2"), N("r", "10"), N("label", "center/big")}),
-    N(L{N("x", "1" ), N("y", "2"), N("r", "10"), N("label", "center/big")}),
+    N(L{N("x", "1" ), N("y", "2"), N("r", "1"), N("label", "small/left/big")}),
+});
+
+ADD_CASE_TO_GROUP("merge example, issue 254 v0 unresolved",
+R"(
+A: &A
+    V: 3
+    L: 1
+B:
+    <<: *A
+    V: 4
+    L: 5
+)",
+L{
+    N("A", L{N("V", "3" ), N("L", "1")}, AR(VALANCH, "A")),
+    N("B", L{N("<<", AR(KEYREF, "<<"), "*A", AR(VALREF, "base")), N("V", "4" ), N("L", "5")}),
+});
+
+ADD_CASE_TO_GROUP("merge example, issue 254 v0 resolved", RESOLVE_REFS,
+R"(
+A: &A
+    V: 3
+    L: 1
+B:
+    <<: *A
+    V: 4
+    L: 5
+)",
+L{
+    N("A", L{N("V", "3" ), N("L", "1")}),
+    N("B", L{N("V", "4" ), N("L", "5")}),
+});
+
+ADD_CASE_TO_GROUP("merge example, issue 254 v1 resolved", RESOLVE_REFS,
+R"(
+A: &A
+    V: 3
+B:
+    <<: *A
+    V: 4
+)",
+L{
+    N("A", L{N("V", "3")}),
+    N("B", L{N("V", "4")}),
+});
+
+ADD_CASE_TO_GROUP("merge example, issue 254 v2 resolved", RESOLVE_REFS,
+R"(
+A: &A
+    V: 3
+    L:
+       - 1
+B:
+    <<: *A
+    V: 4
+    L:
+       -5
+)",
+L{
+    N("A", L{N("V", "3" ), N("L", L{N("1")})}),
+    N("B", L{N("V", "4" ), N("L", "-5")}),
 });
 
 ADD_CASE_TO_GROUP("simple anchor 1, implicit, unresolved",
