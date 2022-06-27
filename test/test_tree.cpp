@@ -3574,7 +3574,7 @@ doc4
     }
     {
         const Tree &ct = t;
-        const NodeRef r = ct.rootref();
+        const ConstNodeRef r = ct.rootref();
         EXPECT_EQ(r.id(), ir);
         EXPECT_EQ(r.child(0), r.doc(0));
         EXPECT_EQ(r.child(1), r.doc(1));
