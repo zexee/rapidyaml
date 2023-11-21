@@ -44,6 +44,14 @@ template<class T>
 typename std::enable_if<   std::is_floating_point<T>::value, bool>::type
 read(NodeRef const& n, T *v);
 
+template<class T>
+typename std::enable_if< ! std::is_floating_point<T>::value, bool>::type
+read_key(NodeRef const& n, T *v);
+
+template<class T>
+typename std::enable_if<   std::is_floating_point<T>::value, bool>::type
+read_key(NodeRef const& n, T *v);
+
 
 //-----------------------------------------------------------------------------
 //-----------------------------------------------------------------------------
@@ -241,10 +249,26 @@ public:
 
     C4_ALWAYS_INLINE C4_PURE bool has_child(ConstImpl const& ch) const noexcept { _C4RV(); return tree_->has_child(id_, ch.m_id); }
     C4_ALWAYS_INLINE C4_PURE bool has_child(csubstr name) const noexcept { _C4RV(); return tree_->has_child(id_, name); }
+    C4_ALWAYS_INLINE C4_PURE bool has_child(const std::string& name) const noexcept { return has_child(to_csubstr(name)); }
+    C4_ALWAYS_INLINE C4_PURE bool has_child(const char* name) const noexcept { return has_child(to_csubstr(name)); }
+    template<typename T>
+    C4_ALWAYS_INLINE C4_PURE bool has_child_of(csubstr name) const noexcept
+    {
+      const auto v = operator[](name);
+      if (!v) return false;
+      T x;
+      return v.get_val(&x);
+    }
+    template<typename T>
+    C4_ALWAYS_INLINE C4_PURE bool has_child_of(const std::string& name) const noexcept { return has_child_of<T>(to_csubstr(name)); }
+    template<typename T>
+    C4_ALWAYS_INLINE C4_PURE bool has_child_of(const char* name) const noexcept { return has_child_of<T>(to_csubstr(name)); }
     C4_ALWAYS_INLINE C4_PURE bool has_children() const noexcept { _C4RV(); return tree_->has_children(id_); }
 
     C4_ALWAYS_INLINE C4_PURE bool has_sibling(ConstImpl const& n) const noexcept { _C4RV(); return tree_->has_sibling(id_, n.m_id); }
     C4_ALWAYS_INLINE C4_PURE bool has_sibling(csubstr name) const noexcept { _C4RV(); return tree_->has_sibling(id_, name); }
+    C4_ALWAYS_INLINE C4_PURE bool has_sibling(const std::string& name) const noexcept { return has_sibling(to_csubstr(name)); }
+    C4_ALWAYS_INLINE C4_PURE bool has_sibling(const char* name) const noexcept { return has_sibling(to_csubstr(name)); }
     /** counts with this */
     C4_ALWAYS_INLINE C4_PURE bool has_siblings() const noexcept { _C4RV(); return tree_->has_siblings(id_); }
     /** does not count with this */
@@ -324,8 +348,15 @@ public:
     {
         _C4RV();
         size_t ch = tree_->find_child(id_, k);
-        _RYML_CB_ASSERT(tree_->m_callbacks, ch != NONE);
-        return {tree_, ch};
+        return ch != NONE ? ConstImpl(tree_, ch) : ConstImpl(nullptr);
+    }
+    C4_ALWAYS_INLINE C4_PURE ConstImpl operator[] (const std::string& k) const noexcept
+    {
+      return operator[](to_csubstr(k));
+    }
+    C4_ALWAYS_INLINE C4_PURE ConstImpl operator[] (const char* k) const noexcept
+    {
+      return operator[](to_csubstr(k));
     }
     /** Find child by key. O(num_children). returns a seed node if no such child is found.  */
     template<class U=Impl>
@@ -334,6 +365,16 @@ public:
         _C4RV();
         size_t ch = tree__->find_child(id__, k);
         return ch != NONE ? Impl(tree__, ch) : NodeRef(tree__, id__, k);
+    }
+    template<class U=Impl>
+    C4_ALWAYS_INLINE C4_PURE auto operator[] (const std::string& k) noexcept -> _C4_IF_MUTABLE(Impl)
+    {
+      return operator[] (to_csubstr(k));
+    }
+    template<class U=Impl>
+    C4_ALWAYS_INLINE C4_PURE auto operator[] (const char* k) noexcept -> _C4_IF_MUTABLE(Impl)
+    {
+      return operator[] (to_csubstr(k));
     }
 
     /** O(num_children) */
@@ -368,6 +409,111 @@ public:
         if( ! read((ConstImpl const&)*this, &v))
             _RYML_CB_ERR(tree_->m_callbacks, "could not deserialize value");
         return *((ConstImpl const*)this);
+    }
+    template<typename T>
+    bool get_val(T *v) const
+    {
+        if (tree_ == nullptr) return false;
+        if( ! read((ConstImpl const&)*this, v)) return false;
+        return true;
+    }
+    template<typename T>
+    inline T as() const
+    {
+        T v;
+        operator>>(v);
+        return v;
+    }
+    template<typename T>
+    inline T as_or(const T& x) const
+    {
+        T v;
+        if (get_val(&v)) return v;
+        return x;
+    }
+
+    template<typename T>
+    inline bool is() const
+    {
+        T v;
+        return get_val(&v);
+    }
+
+    template<typename T>
+    bool get_key(T *v) const
+    {
+        if (tree_ == nullptr) return false;
+        if( ! read_key((ConstImpl const&)*this, v)) return false;
+        return true;
+    }
+    template<typename T>
+    inline T key_as() const
+    {
+        T v;
+        if( ! get_key(&v))
+            _RYML_CB_ERR(tree_->m_callbacks, "could not deserialize key");
+        return v;
+    }
+    template<typename T>
+    inline T key_as_or(const T& x) const
+    {
+        T v;
+        if (get_key(&v)) return v;
+        return x;
+    }
+
+    template<typename T>
+    inline bool key_is() const
+    {
+        T v;
+        return get_key(&v);
+    }
+
+    /** children value */
+    template<typename T>
+    inline bool get_child_as(const std::string& key, T* v) const
+    {
+      auto child = operator[](key);
+      return child && child.get_val(v);
+    }
+
+    template<typename T>
+    inline bool get_child_as(const char* key, T* v) const
+    {
+      auto child = operator[](key);
+      return child && child.get_val(v);
+    }
+
+    template<typename T>
+    inline T get_child_as(const std::string& key) const
+    {
+      T v;
+      if (!get_child_as<T>(key, &v)) return T();
+      return v;
+    }
+
+    template<typename T>
+    inline T get_child_as(const char* key) const
+    {
+      T v;
+      if (!get_child_as<T>(key, &v)) return T();
+      return v;
+    }
+
+    template<typename T>
+    inline T get_child_as_or(const std::string& key, const T& x) const
+    {
+      T v;
+      if (!get_child_as<T>(key, &v)) return x;
+      return v;
+    }
+
+    template<typename T>
+    inline T get_child_as_or(const char* key, const T& x) const
+    {
+      T v;
+      if (!get_child_as<T>(key, &v)) return x;
+      return v;
     }
 
     /** deserialize the node's key to the given variable */
@@ -608,6 +754,7 @@ public:
     /** @{ */
 
     C4_ALWAYS_INLINE C4_PURE bool valid() const noexcept { return m_tree != nullptr && m_id != NONE; }
+    C4_ALWAYS_INLINE C4_PURE operator bool() const noexcept { return valid(); }
 
     /** @} */
 
@@ -713,7 +860,7 @@ public:
 
     inline bool valid() const { return m_tree != nullptr && m_id != NONE; }
     inline bool is_seed() const { return m_seed.str != nullptr || m_seed.len != NONE; }
-
+    inline operator bool() const { return valid() && !is_seed(); }
     inline void _clear_seed() { /*do this manually or an assert is triggered*/ m_seed.str = nullptr; m_seed.len = NONE; }
 
     /** @} */
@@ -875,6 +1022,7 @@ public:
         sv.assign<N>(v);
         _apply(sv);
     }
+
 
     /** @} */
 
@@ -1263,6 +1411,31 @@ inline read(ConstNodeRef const& n, T *v)
     return from_chars_float(n.val(), v);
 }
 
+template<class T>
+typename std::enable_if< ! std::is_floating_point<T>::value, bool>::type
+inline read_key(NodeRef const& n, T *v)
+{
+    return from_chars(n.key(), v);
+}
+template<class T>
+typename std::enable_if< ! std::is_floating_point<T>::value, bool>::type
+inline read_key(ConstNodeRef const& n, T *v)
+{
+    return from_chars(n.key(), v);
+}
+
+template<class T>
+typename std::enable_if<std::is_floating_point<T>::value, bool>::type
+inline read_key(NodeRef const& n, T *v)
+{
+    return from_chars_float(n.key(), v);
+}
+template<class T>
+typename std::enable_if<std::is_floating_point<T>::value, bool>::type
+inline read_key(ConstNodeRef const& n, T *v)
+{
+    return from_chars_float(n.key(), v);
+}
 
 } // namespace yml
 } // namespace c4
